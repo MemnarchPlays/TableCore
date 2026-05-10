@@ -24,6 +24,7 @@ Adds PostgreSQL via Prisma ORM as the durable persistence layer. The Zustand sto
 13. All DB writes complete within 2 seconds on a local LAN Postgres instance under normal load.
 14. `docker-compose.yml` defines a `postgres` service with a named volume so DB data survives `docker compose restart`; the `app` service depends on `postgres` and sets `DATABASE_URL` via environment variable.
 15. A `Dockerfile` exists for the Next.js app that runs `prisma generate` and `prisma migrate deploy` before starting the server, so the Docker image is self-migrating on first run.
+16. [BUG] When the app is loaded at any origin (e.g. `http://192.168.x.x:3000`), an active encounter is automatically displayed without the DM needing to navigate to `/encounters` first; the page does not load blank when `tablecore-active-id` is absent from that origin's localStorage.
 
 ## Status
 

@@ -2,6 +2,18 @@
 
 *Last updated: 2026-05-10*
 
+### [ISSUE-019] Active encounter not restored when accessing via LAN IP
+**Severity:** high
+**Status:** fixed
+**Reported:** 2026-05-10
+
+When the app is opened at `http://192.168.x.x:3000` (any origin other than `localhost:3000`), the page loads blank — no combatants, no encounter state. Root cause: `tablecore-active-id` is stored in `localStorage` under the `localhost:3000` origin; a different origin has an empty localStorage, so the DB-fetch-on-mount never fires.
+
+**Fix:** When `tablecore-active-id` is absent from localStorage, the mount `useEffect` in `CombatTracker/index.tsx` now falls back to `GET /api/encounters` and auto-loads the most recently updated encounter. The key is written to this origin's localStorage so subsequent refreshes use the fast path. If DB is unreachable or empty, the UI starts fresh silently.
+**Violates:** `postgres-persistence.feature.md` Criterion 16.
+
+---
+
 ### [ISSUE-018] No way to edit an existing condition's rounds or level
 **Severity:** medium
 **Status:** fixed

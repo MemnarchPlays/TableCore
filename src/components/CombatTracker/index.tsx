@@ -37,28 +37,49 @@ export default function CombatTracker() {
     document.documentElement.setAttribute('data-accent', accentColor)
   }, [accentColor])
 
-  // On mount: restore active encounter from DB if an ID was saved
+  // On mount: restore active encounter from DB.
+  // Primary: use savedId from this origin's localStorage.
+  // Fallback: fetch most-recently-updated encounter (covers LAN IP access where localStorage is empty).
   useEffect(() => {
-    const savedId = localStorage.getItem('tablecore-active-id')
-    if (!savedId) return
-    if (useCombatStore.getState().encounterId) return // already loaded (e.g. resume flow)
+    if (useCombatStore.getState().encounterId) return // already loaded via resume flow
 
-    fetch(`/api/encounters/${savedId}`)
-      .then((r) => { if (!r.ok) throw new Error(); return r.json() })
-      .then((data) => {
-        useCombatStore.getState().loadEncounter({
-          id: data.id,
-          name: data.name,
-          round: data.round,
-          activeIndex: data.activeIndex,
-          isStarted: data.isStarted,
-          combatants: data.combatants.map(({ position: _p, ...c }: { position: number; [k: string]: unknown }) => c),
+    const applyEncounter = (data: {
+      id: string; name: string; round: number; activeIndex: number | null
+      isStarted: boolean; combatants: Array<Omit<import('@/types/combat').Combatant, 'isSelected'> & { position: number }>
+    }) => {
+      useCombatStore.getState().loadEncounter({
+        id: data.id,
+        name: data.name,
+        round: data.round,
+        activeIndex: data.activeIndex,
+        isStarted: data.isStarted,
+        combatants: data.combatants.map(({ position: _p, ...c }) => c),
+      })
+    }
+
+    const fetchMostRecent = () =>
+      fetch('/api/encounters')
+        .then((r) => r.ok ? r.json() : [])
+        .then((list: Array<{ id: string }>) => {
+          if (list.length === 0) return
+          return fetch(`/api/encounters/${list[0].id}`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((data) => { if (data) applyEncounter(data) })
         })
-      })
-      .catch(() => {
-        localStorage.removeItem('tablecore-active-id')
-        setRestoreError(true)
-      })
+        .catch(() => { /* DB unavailable or empty — start fresh */ })
+
+    const savedId = localStorage.getItem('tablecore-active-id')
+    if (savedId) {
+      fetch(`/api/encounters/${savedId}`)
+        .then((r) => { if (!r.ok) throw new Error(); return r.json() })
+        .then(applyEncounter)
+        .catch(() => {
+          localStorage.removeItem('tablecore-active-id')
+          setRestoreError(true)
+        })
+    } else {
+      fetchMostRecent()
+    }
   }, [])
 
   // Auto-switch to detail view on mobile when combat starts
