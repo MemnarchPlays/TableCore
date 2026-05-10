@@ -24,6 +24,34 @@ if %NODE_MAJOR% LSS 18 (
 
 for /f %%V in ('node -e "process.stdout.write(process.versions.node)"') do echo Node.js v%%V OK
 
+:: Docker check + Postgres startup
+echo.
+where docker >nul 2>&1
+if not errorlevel 1 (
+  echo Docker found. Starting Postgres...
+  docker compose up -d postgres
+  if errorlevel 1 ( echo ERROR: Failed to start Postgres container. & pause & exit /b 1 )
+
+  echo Waiting for Postgres to be ready...
+  :wait_pg
+  docker compose exec -T postgres pg_isready -U tablecore >nul 2>&1
+  if errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto wait_pg
+  )
+  echo Postgres ready.
+
+  echo Applying database migrations...
+  call npx prisma migrate deploy
+  if errorlevel 1 ( echo ERROR: Migration failed. & pause & exit /b 1 )
+  echo Migrations applied.
+) else (
+  echo WARNING: Docker not found.
+  echo Postgres must be running at the DATABASE_URL in your .env file.
+  echo Run 'npx prisma migrate deploy' manually before starting the app.
+  echo.
+)
+
 :: Install dependencies
 echo.
 echo Installing dependencies...

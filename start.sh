@@ -16,21 +16,42 @@ if (( NODE_MAJOR < 18 )); then
   echo "ERROR: Node.js v18+ required (found v$(node -e 'process.stdout.write(process.versions.node)'))."
   exit 1
 fi
-
 echo "Node.js $(node --version) OK"
+
+# Docker check + Postgres startup
+echo ""
+if command -v docker &>/dev/null; then
+  echo "Docker found. Starting Postgres..."
+  docker compose up -d postgres
+
+  echo "Waiting for Postgres to be ready..."
+  until docker compose exec -T postgres pg_isready -U tablecore &>/dev/null; do
+    sleep 1
+  done
+  echo "Postgres ready."
+
+  echo "Applying database migrations..."
+  npx prisma migrate deploy
+  echo "Migrations applied."
+else
+  echo "WARNING: Docker not found."
+  echo "Postgres must be running at the DATABASE_URL in your .env file."
+  echo "Run 'npx prisma migrate deploy' manually before starting the app."
+  echo ""
+fi
 
 # Install dependencies
 echo ""
 echo "Installing dependencies..."
 npm install --prefer-offline
 
-if $DEV_MODE; then
-  # Detect local IP for convenience message
-  LOCAL_IP=$(ip -4 addr show scope global 2>/dev/null \
-    | grep -oP '(?<=inet\s)\d+(\.\d+){3}' \
-    | head -1 || true)
-  [[ -z "$LOCAL_IP" ]] && LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "your-server-ip")
+# Detect local IP
+LOCAL_IP=$(ip -4 addr show scope global 2>/dev/null \
+  | grep -oP '(?<=inet\s)\d+(\.\d+){3}' \
+  | head -1 || true)
+[[ -z "$LOCAL_IP" ]] && LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "your-server-ip")
 
+if $DEV_MODE; then
   echo ""
   echo "Starting dev server..."
   echo ""
@@ -42,12 +63,6 @@ else
   echo ""
   echo "Building for production..."
   npm run build
-
-  # Detect local IP
-  LOCAL_IP=$(ip -4 addr show scope global 2>/dev/null \
-    | grep -oP '(?<=inet\s)\d+(\.\d+){3}' \
-    | head -1 || true)
-  [[ -z "$LOCAL_IP" ]] && LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "your-server-ip")
 
   echo ""
   echo "Starting production server..."

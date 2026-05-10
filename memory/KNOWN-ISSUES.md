@@ -2,6 +2,18 @@
 
 *Last updated: 2026-05-10*
 
+### [ISSUE-021] PrismaClientKnownRequestError on findMany — DB tables missing or migration not applied
+**Severity:** high
+**Status:** fixed
+**Reported:** 2026-05-10
+
+`prisma.encounter.findMany()` throws `PrismaClientKnownRequestError` in the server log. As a result all `/api/encounters` calls fail (500), the DB sync never writes, and state is never shared between origins — combatants added on localhost do not appear on the LAN IP and vice versa. `PrismaClientKnownRequestError` (not `InitializationError`) means Prisma reached Postgres but the query was rejected — most likely the migration has not been applied and the tables do not exist, OR the Prisma client was generated against a different schema than what's in the DB.
+
+**Fix:** `start.bat` and `start.sh` now check for Docker, run `docker compose up -d postgres`, wait for Postgres to be healthy, and run `npx prisma migrate deploy` before starting the app — both in dev and production modes. All API route handlers wrapped in try/catch; Prisma errors now log with context (`[GET /api/encounters]`) and return clean `{ error: 'Database unavailable' }` JSON rather than crashing. Added `npm run db:setup` convenience script for manual setup.
+**Violates:** `postgres-persistence.feature.md` Criterion 17.
+
+---
+
 ### [ISSUE-020] React does not hydrate on LAN IP — buttons unresponsive (hardcoded allowedDevOrigins)
 **Severity:** high
 **Status:** fixed

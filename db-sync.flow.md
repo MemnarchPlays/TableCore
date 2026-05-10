@@ -27,7 +27,8 @@
 
 | Condition | Behaviour |
 |---|---|
-| DB unreachable on Start Combat | POST fails silently; `encounterId` remains null; session continues in memory with no DB sync |
+| DB unreachable on Start Combat | POST returns 500 (caught); `encounterId` remains null; session continues in memory with no DB sync; server log shows `[POST /api/encounters]` with error |
+| DB tables missing (migration not applied) | Same as above; server log shows `PrismaClientKnownRequestError`; fix: run `npx prisma migrate deploy` or use `start.bat`/`start.sh` which auto-applies migrations via Docker |
 | PUT fails mid-session | Non-blocking toast: "Auto-save failed. Session continues in memory."; next state change retries |
 | GET fails on page refresh | Toast: "Could not restore session from database." with "View History" link to `/encounters` |
 | Encounter deleted externally while active | Next PUT returns 404/500; treated as a PUT failure (toast shown) |
