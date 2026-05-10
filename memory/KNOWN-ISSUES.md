@@ -2,6 +2,18 @@
 
 *Last updated: 2026-05-10*
 
+### [ISSUE-020] React does not hydrate on LAN IP — buttons unresponsive (hardcoded allowedDevOrigins)
+**Severity:** high
+**Status:** fixed
+**Reported:** 2026-05-10
+
+When opening the app at any local IP other than `localhost`, the page renders static HTML but React never hydrates: buttons are unresponsive and no data loads. Root cause: `next.config.ts` has `allowedDevOrigins: ['192.168.1.151']` hardcoded to one specific IP. Next.js dev server blocks its HMR WebSocket for any other origin, which prevents client components from initialising. This is a regression of ISSUE-003 — the original fix was too narrow. In dev mode the browser console will show `⚠ Blocked cross-origin request to Next.js dev resource /_next/webpack-hmr`.
+
+**Fix:** Replaced `allowedDevOrigins: ['192.168.1.151']` with `['192.168.*', '10.*', '172.*']` in `next.config.ts`, covering all RFC 1918 private ranges. Dev server must be restarted after the config change.
+**Violates:** `zustand-combat-engine.feature.md` Criterion 17.
+
+---
+
 ### [ISSUE-019] Active encounter not restored when accessing via LAN IP
 **Severity:** high
 **Status:** fixed

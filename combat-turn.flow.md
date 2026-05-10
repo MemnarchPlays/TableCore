@@ -41,8 +41,8 @@
 | LocalStorage read fails / corrupted | Toast: "Could not restore session." + "Start Fresh" button; do not hang |
 | SSR / hydration | Store initialises with empty state on server and first client render (`skipHydration: true`); `persist.rehydrate()` fires in `useEffect` so localStorage state is applied as a normal client re-render, not during hydration — no React mismatch warning |
 | Concentration damage | Prompt DM for Concentration Save (Phase 2; out of scope here — stub hook only) |
-| Network IP access (dev) | `localStorage` is per browser origin; state from `localhost:3000` is not visible at `10.x.x.x:3000` — this is browser security, not a bug. Each device maintains its own session until Phase 4 (PostgreSQL) provides shared persistence. |
-| Network IP blocked — HMR cross-origin | Next.js 16 blocks `/_next/webpack-hmr` requests from non-localhost origins by default. Symptom: dev server logs `⚠ Blocked cross-origin request … from "192.168.x.x"`. Fix: add `allowedDevOrigins: ['<local-ip>']` to `next.config.ts` and restart. |
+| Network IP access (dev) | `localStorage` is per browser origin; `tablecore-active-id` set on `localhost:3000` is not present on `192.168.x.x:3000`. Handled by Phase 2 fallback: on load, if key absent, `GET /api/encounters` fetches most-recent encounter from DB (see `db-sync.flow.md` step 6a). |
+| Network IP blocked — HMR cross-origin | Next.js 16 blocks `/_next/webpack-hmr` requests from non-localhost origins by default. Symptom: dev server logs `⚠ Blocked cross-origin request … from "192.168.x.x"`; React never hydrates; buttons unresponsive. Fix: `allowedDevOrigins: ['192.168.*', '10.*', '172.*']` in `next.config.ts` covers all RFC 1918 private ranges — do not hardcode a single IP. |
 
 ---
 
