@@ -77,6 +77,7 @@ export interface CombatStore {
   setTempHp: (id: string, amount: number) => void
 
   addCondition: (combatantId: string, condition: Omit<Condition, 'id'>) => void
+  updateCondition: (combatantId: string, conditionId: string, patch: Partial<Pick<Condition, 'name' | 'remainingRounds'>>) => void
   removeCondition: (combatantId: string, conditionId: string) => void
 
   toggleSelect: (id: string) => void
@@ -303,6 +304,22 @@ export const useCombatStore = create<CombatStore>()(
                     ...c.conditions,
                     { ...condition, id: uuid() },
                   ],
+                }
+          ),
+          past: pushSnap(state.past, snap(state)),
+          future: [],
+        })),
+
+      updateCondition: (combatantId, conditionId, patch) =>
+        set((state) => ({
+          combatants: state.combatants.map((c) =>
+            c.id !== combatantId
+              ? c
+              : {
+                  ...c,
+                  conditions: c.conditions.map((cond) =>
+                    cond.id !== conditionId ? cond : { ...cond, ...patch }
+                  ),
                 }
           ),
           past: pushSnap(state.past, snap(state)),

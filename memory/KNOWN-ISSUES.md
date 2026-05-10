@@ -2,6 +2,16 @@
 
 *Last updated: 2026-05-10*
 
+### [ISSUE-018] No way to edit an existing condition's rounds or level
+**Severity:** medium
+**Status:** fixed
+**Reported:** 2026-05-10
+
+**Fix:** `updateCondition(combatantId, conditionId, patch)` added to `src/store/combat.ts` (undoable, patches `name` and/or `remainingRounds`). `getLeveledBase` helper added to `src/data/conditions.ts`. `CombatantCard.tsx` condition badges gained a ✏ button that opens an inline edit panel below the badge list; panel shows a level selector (for leveled conditions) pre-populated with the current level, plus Permanent/Rounds controls; Save commits via `updateCondition`, Cancel discards. Edit is undoable.
+**Violates:** `zustand-combat-engine.feature.md` Criterion 28.
+
+---
+
 ### [ISSUE-017] Exhaustion mechanic text uses 2014 5e rules instead of 2024 5e
 **Severity:** low
 **Status:** fixed

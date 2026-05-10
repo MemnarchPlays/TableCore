@@ -36,6 +36,7 @@ Implements the in-memory combat session: a Zustand store that tracks combatants,
 25. Condition badges displayed on the initiative list rows and on the combatant detail card both show a visible mechanic tooltip on hover, using the same tooltip style as the condition picker (e.g. hovering the "Blinded" badge anywhere in the UI shows "Can't see. Auto-fails sight checks…"); custom conditions with no entry in the standard list show no tooltip.
 26. Conditions with discrete numbered levels (e.g. Exhaustion levels 1–6) can be added at a specific level via the condition picker; the picker shows an inline level selector when a leveled condition button is clicked; the badge displays the condition name and level (e.g. "Exhaustion 2"); the mechanic tooltip on the badge shows the cumulative effects at that specific level.
 27. All condition mechanic text reflects D&D 5e 2024 rules; Exhaustion uses the 2024 scaling formula (−2 × level to d20 Tests, −5 × level ft to Speed per level) rather than the 2014 model; hovering "Exhaustion 3" shows "−6 to d20 Tests. Speed −15 ft."
+28. The DM can edit an existing condition on a combatant from the detail card: changing the remaining rounds on any condition and changing the level on a leveled condition (e.g. Exhaustion 2 → Exhaustion 3); a ✏ button on each badge opens an inline edit panel with Permanent/Rounds controls and a level selector for leveled conditions; the edit action is undoable.
 
 ## Status
 

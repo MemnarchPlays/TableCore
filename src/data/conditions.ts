@@ -63,3 +63,14 @@ export function isLeveledCondition(name: string): boolean {
 export function getLevelCount(name: string): number {
   return LEVELED_DEFS.find((c) => c.name === name)?.levels?.length ?? 0
 }
+
+/** Parses "Exhaustion 2" → { base: "Exhaustion", level: 2 }. Returns null for flat conditions. */
+export function getLeveledBase(name: string): { base: string; level: number } | null {
+  for (const cond of LEVELED_DEFS) {
+    if (name.startsWith(cond.name + ' ')) {
+      const level = parseInt(name.slice(cond.name.length + 1), 10)
+      if (!isNaN(level)) return { base: cond.name, level }
+    }
+  }
+  return null
+}

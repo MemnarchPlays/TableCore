@@ -19,6 +19,7 @@
 | 6 | DM | Applies HP change (damage / heal) | `current_hp` updated; temp HP absorbs damage first; result clamped `0 ≤ hp ≤ max_hp`; action pushed to history stack |
 | 7 | DM | Selects multiple combatants, applies bulk action | Same HP/condition logic applied to each selected combatant atomically; single undo step undoes all |
 | 8 | DM | Adds condition to combatant | Condition appended to combatant's `conditions[]` with `remaining_rounds` and `expiry_trigger` (StartOfTurn / EndOfTurn); rendered as badge |
+| 8a | DM | Edits existing condition (✏ button) | `updateCondition(combatantId, conditionId, patch)` merges patch (`name` and/or `remainingRounds`) into the matching condition; undo snapshot pushed; badge re-renders with new values |
 | 9 | Turn advances | Condition expiry check fires | For each condition on the newly-active combatant: decrement `remaining_rounds`; remove if `remaining_rounds === 0` |
 | 10 | DM | Undoes last action | Previous snapshot restored from history stack; UI re-renders; redo stack updated |
 | 11 | DM | Adds reinforcement mid-encounter | New combatant inserted at correct sorted position; `activeIndex` recalculated to keep same combatant active |

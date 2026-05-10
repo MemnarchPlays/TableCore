@@ -5,18 +5,46 @@ import { useCombatStore } from '@/store/combat'
 import type { Combatant } from '@/types/combat'
 import ConditionPicker from './ConditionPicker'
 import EditCombatantModal from './EditCombatantModal'
-import { getConditionMechanic } from '@/data/conditions'
+import { getConditionMechanic, getLeveledBase, getLevelCount } from '@/data/conditions'
+import type { Condition } from '@/types/combat'
 
 interface Props {
   combatant: Combatant
 }
 
 export default function CombatantCard({ combatant: c }: Props) {
-  const { applyDamage, applyHealing, setTempHp, removeCondition } = useCombatStore()
+  const { applyDamage, applyHealing, setTempHp, removeCondition, updateCondition } = useCombatStore()
   const [hpInput, setHpInput] = useState('')
   const [tempInput, setTempInput] = useState('')
   const [showConditionPicker, setShowConditionPicker] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [editingConditionId, setEditingConditionId] = useState<string | null>(null)
+  const [editLevel, setEditLevel] = useState<number | null>(null)
+  const [editRounds, setEditRounds] = useState('1')
+  const [editPermanent, setEditPermanent] = useState(false)
+
+  const startEdit = (cond: Condition) => {
+    const leveledBase = getLeveledBase(cond.name)
+    setEditingConditionId(cond.id)
+    setEditLevel(leveledBase?.level ?? null)
+    setEditPermanent(cond.remainingRounds === null)
+    setEditRounds(cond.remainingRounds?.toString() ?? '1')
+  }
+
+  const commitEdit = () => {
+    if (!editingConditionId) return
+    const editCond = c.conditions.find((cond) => cond.id === editingConditionId)
+    if (!editCond) return
+    const leveledBase = getLeveledBase(editCond.name)
+    const newName = leveledBase && editLevel !== null
+      ? `${leveledBase.base} ${editLevel}`
+      : editCond.name
+    updateCondition(c.id, editingConditionId, {
+      name: newName,
+      remainingRounds: editPermanent ? null : Math.max(1, parseInt(editRounds, 10) || 1),
+    })
+    setEditingConditionId(null)
+  }
 
   const handleDamage = () => {
     const val = parseInt(hpInput, 10)
@@ -161,15 +189,22 @@ export default function CombatantCard({ combatant: c }: Props) {
               return (
                 <div
                   key={cond.id}
-                  className="relative group/cond flex items-center gap-1.5 px-2 py-1 rounded bg-purple-900/50 border border-purple-800 text-purple-200 text-sm"
+                  className="relative group/cond flex items-center gap-0.5 px-2 py-1 rounded bg-purple-900/50 border border-purple-800 text-purple-200 text-sm"
                 >
                   <span className="font-medium">{cond.name}</span>
                   {cond.remainingRounds !== null && (
-                    <span className="font-mono text-purple-400 text-xs">{cond.remainingRounds}r</span>
+                    <span className="font-mono text-purple-400 text-xs ml-1">{cond.remainingRounds}r</span>
                   )}
                   <button
+                    onClick={() => startEdit(cond)}
+                    className="ml-1 min-h-[44px] px-2 inline-flex items-center justify-center text-purple-400 hover:text-zinc-200 text-xs transition-colors"
+                    aria-label={`Edit ${cond.name}`}
+                  >
+                    ✏
+                  </button>
+                  <button
                     onClick={() => removeCondition(c.id, cond.id)}
-                    className="ml-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-purple-400 hover:text-red-400 text-xs"
+                    className="min-h-[44px] px-2 inline-flex items-center justify-center text-purple-400 hover:text-red-400 text-xs transition-colors"
                     aria-label={`Remove ${cond.name}`}
                   >
                     ✕
@@ -184,6 +219,93 @@ export default function CombatantCard({ combatant: c }: Props) {
             })}
           </div>
         )}
+
+        {/* Inline condition editor */}
+        {editingConditionId && (() => {
+          const editCond = c.conditions.find((cond) => cond.id === editingConditionId)
+          if (!editCond) return null
+          const leveledBase = getLeveledBase(editCond.name)
+          return (
+            <div className="rounded-lg border border-zinc-600 bg-zinc-800/60 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-300">
+                  Edit: <span className="text-purple-300">{editCond.name}</span>
+                </span>
+                <button
+                  onClick={() => setEditingConditionId(null)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-colors"
+                  aria-label="Cancel edit"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {leveledBase && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-zinc-400">Level:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: getLevelCount(leveledBase.base) }, (_, i) => {
+                      const level = i + 1
+                      return (
+                        <button
+                          key={level}
+                          onClick={() => setEditLevel(level)}
+                          className={[
+                            'min-h-[44px] min-w-[44px] rounded text-sm font-semibold transition-colors',
+                            editLevel === level
+                              ? 'bg-amber-600 text-white border border-amber-500'
+                              : 'bg-zinc-700 text-zinc-200 border border-zinc-600 hover:bg-zinc-600',
+                          ].join(' ')}
+                        >
+                          {level}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer min-h-[44px]">
+                  <input
+                    type="checkbox"
+                    checked={editPermanent}
+                    onChange={(e) => setEditPermanent(e.target.checked)}
+                    className="accent-amber-400"
+                  />
+                  Permanent
+                </label>
+                {!editPermanent && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-zinc-400">Rounds:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={editRounds}
+                      onChange={(e) => setEditRounds(e.target.value)}
+                      className="w-16 min-h-[44px] px-2 rounded bg-zinc-700 text-zinc-100 border border-zinc-600 text-sm focus:outline-none focus:border-[var(--accent-400)] text-center"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1 border-t border-zinc-700">
+                <button
+                  onClick={commitEdit}
+                  className="flex-1 min-h-[44px] rounded bg-[var(--accent-500)] text-zinc-900 font-semibold text-sm hover:bg-[var(--accent-400)] transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingConditionId(null)}
+                  className="min-h-[44px] px-4 rounded bg-zinc-700 text-zinc-300 text-sm hover:bg-zinc-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )
+        })()}
       </div>}
 
       {showEditModal && (
