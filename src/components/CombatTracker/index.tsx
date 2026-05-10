@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useCombatStore, rehydrationFailed } from '@/store/combat'
 import { useSettingsStore } from '@/store/settings'
+import { usePersistToDB } from '@/hooks/usePersistToDB'
 import InitiativeList from './InitiativeList'
 import CombatantCard from './CombatantCard'
 import AddCombatantModal from './AddCombatantModal'
@@ -10,8 +12,13 @@ import BulkActionBar from './BulkActionBar'
 import SettingsModal from '@/components/Settings/SettingsModal'
 
 export default function CombatTracker() {
-  const { combatants, activeIndex, round, isStarted, startCombat, resetCombat, nextTurn, prevTurn, undo, redo, past, future } =
-    useCombatStore()
+  const {
+    combatants, activeIndex, round, isStarted, encounterName,
+    startCombat, resetCombat, nextTurn, prevTurn, undo, redo,
+    past, future, setEncounterId, encounterId,
+  } = useCombatStore()
+
+  const { syncState, clearError } = usePersistToDB()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -105,7 +112,22 @@ export default function CombatTracker() {
 
           {!isStarted && (
             <button
-              onClick={startCombat}
+              onClick={async () => {
+                startCombat()
+                if (!encounterId) {
+                  try {
+                    const res = await fetch('/api/encounters', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: encounterName }),
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      setEncounterId(data.id)
+                    }
+                  } catch { /* sync will catch up on next change */ }
+                }
+              }}
               disabled={combatants.length === 0}
               className="min-h-[44px] px-3 sm:px-5 rounded text-sm font-semibold bg-green-600 text-white hover:bg-green-500 active:bg-green-700 disabled:opacity-30 transition-colors"
             >
@@ -120,6 +142,19 @@ export default function CombatTracker() {
           >
             + Add
           </button>
+
+          {/* Sync indicator — only shown when an encounter is tracked */}
+          {encounterId && syncState === 'pending' && (
+            <span className="hidden sm:inline text-xs text-zinc-400 px-2" title="Saving…">●</span>
+          )}
+
+          <Link
+            href="/encounters"
+            className="hidden sm:inline-flex min-h-[44px] items-center px-3 rounded text-sm bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
+            title="Encounter history"
+          >
+            History
+          </Link>
 
           <button
             onClick={() => setShowSettingsModal(true)}
@@ -201,6 +236,18 @@ export default function CombatTracker() {
             className="min-h-[44px] px-3 rounded bg-red-700 hover:bg-red-600 font-medium"
           >
             Start Fresh
+          </button>
+        </div>
+      )}
+
+      {syncState === 'error' && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-yellow-900 border border-yellow-700 text-yellow-100 text-sm px-4 py-3 rounded shadow-lg z-50">
+          <span>Auto-save failed. Session continues in memory.</span>
+          <button
+            onClick={clearError}
+            className="min-h-[44px] px-3 rounded bg-yellow-700 hover:bg-yellow-600 font-medium"
+          >
+            Dismiss
           </button>
         </div>
       )}

@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Encounter {
+  id          String      @id @default(uuid())
+  publicSlug  String      @unique @default(uuid())
+  name        String      @default("New Encounter")
+  round       Int         @default(0)
+  activeIndex Int?
+  isStarted   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  combatants  Combatant[]
+}
+
+model Combatant {
+  id              String           @id
+  encounterId     String
+  encounter       Encounter        @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  name            String
+  initiative      Float
+  initMod         Int              @default(0)
+  dexMod          Int              @default(0)
+  dexScore        Int              @default(10)
+  maxHp           Int              @default(0)
+  currentHp       Int              @default(0)
+  tempHp          Int              @default(0)
+  ac              Int              @default(0)
+  isEnvironmental Boolean          @default(false)
+  position        Int
+  conditions      ActiveCondition[]
+}
+
+model ActiveCondition {
+  id              String    @id
+  combatantId     String
+  combatant       Combatant @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  name            String
+  remainingRounds Int?
+  expiryTrigger   String    @default("StartOfTurn")
+  isConcentration Boolean   @default(false)
+}

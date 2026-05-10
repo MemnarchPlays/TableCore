@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — keep .env.example committed, exclude all others
+.env
+.env.local
+.env.*.local
 
 # vercel
 .vercel
@@ -42,3 +44,5 @@ next-env.d.ts
 
 # claude code local settings
 .claude/settings.local.json
+
+/src/generated/prisma

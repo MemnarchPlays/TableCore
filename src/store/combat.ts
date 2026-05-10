@@ -62,6 +62,19 @@ export interface CombatStore {
   isStarted: boolean
   past: CombatSnapshot[]
   future: CombatSnapshot[]
+  encounterId: string | null
+  encounterName: string
+
+  setEncounterId: (id: string) => void
+  setEncounterName: (name: string) => void
+  loadEncounter: (data: {
+    id: string
+    name: string
+    round: number
+    activeIndex: number | null
+    isStarted: boolean
+    combatants: Array<Omit<Combatant, 'isSelected'>>
+  }) => void
 
   addCombatant: (input: CombatantInput) => void
   updateCombatant: (id: string, patch: Partial<CombatantInput>) => void
@@ -103,6 +116,23 @@ export const useCombatStore = create<CombatStore>()(
       isStarted: false,
       past: [],
       future: [],
+      encounterId: null,
+      encounterName: 'New Encounter',
+
+      setEncounterId: (id) => set({ encounterId: id }),
+      setEncounterName: (name) => set({ encounterName: name }),
+
+      loadEncounter: (data) =>
+        set({
+          encounterId: data.id,
+          encounterName: data.name,
+          combatants: data.combatants.map((c) => ({ ...c, isSelected: false })),
+          activeIndex: data.activeIndex,
+          round: data.round,
+          isStarted: data.isStarted,
+          past: [],
+          future: [],
+        }),
 
       addCombatant: (input) =>
         set((state) => {
@@ -219,6 +249,8 @@ export const useCombatStore = create<CombatStore>()(
           isStarted: false,
           past: [],
           future: [],
+          encounterId: null,
+          encounterName: 'New Encounter',
         }),
 
       nextTurn: () =>
@@ -479,6 +511,8 @@ export const useCombatStore = create<CombatStore>()(
         activeIndex: state.activeIndex,
         round: state.round,
         isStarted: state.isStarted,
+        encounterId: state.encounterId,
+        encounterName: state.encounterName,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<CombatStore>
