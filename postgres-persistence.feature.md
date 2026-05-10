@@ -27,7 +27,7 @@ Adds PostgreSQL via Prisma ORM as the durable persistence layer. The Zustand sto
 
 ## Status
 
-IN PROGRESS
+COMPLETE
 
 ### Progress
 
@@ -46,8 +46,8 @@ IN PROGRESS
 - [x] DB write failure toast in CombatTracker (`syncState === 'error'`)
 - [x] `src/app/encounters/page.tsx` — encounter list with resume and delete (confirmation dialog)
 - [x] Resume flow: fetch full encounter → `loadEncounter` → navigate to `/`
-- [ ] Page-load rehydration: DB vs localStorage conflict resolution (criterion 9)
-- [ ] db-sync.flow.md created
+- [x] Page-load rehydration: localStorage persist middleware removed; on mount reads `tablecore-active-id` key, GETs from DB, calls `loadEncounter`; DB always wins on refresh; GET failure shows restore-error toast with link to `/encounters`
+- [x] db-sync.flow.md created
 
 ## Scope
 

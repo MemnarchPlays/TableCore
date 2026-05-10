@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Combatant, CombatantInput, CombatSnapshot, Condition } from '@/types/combat'
 import { useSettingsStore } from './settings'
 
@@ -105,11 +104,9 @@ export interface CombatStore {
   redo: () => void
 }
 
-export let rehydrationFailed = false
+const ACTIVE_ID_KEY = 'tablecore-active-id'
 
-export const useCombatStore = create<CombatStore>()(
-  persist(
-    (set) => ({
+export const useCombatStore = create<CombatStore>()((set) => ({
       combatants: [],
       activeIndex: null,
       round: 0,
@@ -119,10 +116,14 @@ export const useCombatStore = create<CombatStore>()(
       encounterId: null,
       encounterName: 'New Encounter',
 
-      setEncounterId: (id) => set({ encounterId: id }),
+      setEncounterId: (id) => {
+        if (typeof window !== 'undefined') localStorage.setItem(ACTIVE_ID_KEY, id)
+        set({ encounterId: id })
+      },
       setEncounterName: (name) => set({ encounterName: name }),
 
-      loadEncounter: (data) =>
+      loadEncounter: (data) => {
+        if (typeof window !== 'undefined') localStorage.setItem(ACTIVE_ID_KEY, data.id)
         set({
           encounterId: data.id,
           encounterName: data.name,
@@ -132,7 +133,8 @@ export const useCombatStore = create<CombatStore>()(
           isStarted: data.isStarted,
           past: [],
           future: [],
-        }),
+        })
+      },
 
       addCombatant: (input) =>
         set((state) => {
@@ -241,7 +243,8 @@ export const useCombatStore = create<CombatStore>()(
           }
         }),
 
-      resetCombat: () =>
+      resetCombat: () => {
+        if (typeof window !== 'undefined') localStorage.removeItem(ACTIVE_ID_KEY)
         set({
           combatants: [],
           activeIndex: null,
@@ -251,7 +254,8 @@ export const useCombatStore = create<CombatStore>()(
           future: [],
           encounterId: null,
           encounterName: 'New Encounter',
-        }),
+        })
+      },
 
       nextTurn: () =>
         set((state) => {
@@ -498,36 +502,5 @@ export const useCombatStore = create<CombatStore>()(
             future: state.future.slice(1),
           }
         }),
-    }),
-    {
-      name: 'tablecore-combat',
-      storage: createJSONStorage(() =>
-        typeof window !== 'undefined'
-          ? localStorage
-          : { getItem: () => null, setItem: () => {}, removeItem: () => {} }
-      ),
-      partialize: (state) => ({
-        combatants: state.combatants,
-        activeIndex: state.activeIndex,
-        round: state.round,
-        isStarted: state.isStarted,
-        encounterId: state.encounterId,
-        encounterName: state.encounterName,
-      }),
-      merge: (persisted, current) => {
-        const p = persisted as Partial<CombatStore>
-        return {
-          ...current,
-          ...p,
-          combatants: (p.combatants ?? []).map((c) => ({ ...c, isSelected: false })),
-          past: [],
-          future: [],
-        }
-      },
-      onRehydrateStorage: () => (_state, error) => {
-        if (error) rehydrationFailed = true
-      },
-      skipHydration: true,
-    }
-  )
+  })
 )

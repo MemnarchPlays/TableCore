@@ -24,7 +24,7 @@
 | 10 | DM | Undoes last action | Previous snapshot restored from history stack; UI re-renders; redo stack updated |
 | 11 | DM | Adds reinforcement mid-encounter | New combatant inserted at correct sorted position; `activeIndex` recalculated to keep same combatant active |
 | 12 | DM | Edits an existing combatant mid-encounter | `updateCombatant(id, patch)` merges the patch; if initiative or tiebreaker fields changed, list re-sorts and `activeIndex` recalculated; action pushed to undo history |
-| 13 | Browser | Page hard-refreshed | Zustand store rehydrated from localStorage; full combat state restored; DM continues without data loss |
+| 13 | Browser | Page hard-refreshed | `CombatTracker` reads `tablecore-active-id` from localStorage; fetches full encounter from DB via `GET /api/encounters/[id]`; calls `loadEncounter`; DB is the source of truth (see `db-sync.flow.md`) |
 
 ---
 

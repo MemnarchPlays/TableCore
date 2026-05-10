@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useCombatStore, rehydrationFailed } from '@/store/combat'
+import { useCombatStore } from '@/store/combat'
 import { useSettingsStore } from '@/store/settings'
 import { usePersistToDB } from '@/hooks/usePersistToDB'
 import InitiativeList from './InitiativeList'
@@ -22,14 +22,14 @@ export default function CombatTracker() {
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [hydrationToast, setHydrationToast] = useState(false)
+  const [restoreError, setRestoreError] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
   const [inspectedId, setInspectedId] = useState<string | null>(null)
 
   const { accentColor } = useSettingsStore()
 
+  // Restore accent colour setting
   useEffect(() => {
-    useCombatStore.persist.rehydrate()
     useSettingsStore.persist.rehydrate()
   }, [])
 
@@ -37,8 +37,28 @@ export default function CombatTracker() {
     document.documentElement.setAttribute('data-accent', accentColor)
   }, [accentColor])
 
+  // On mount: restore active encounter from DB if an ID was saved
   useEffect(() => {
-    if (rehydrationFailed) setHydrationToast(true)
+    const savedId = localStorage.getItem('tablecore-active-id')
+    if (!savedId) return
+    if (useCombatStore.getState().encounterId) return // already loaded (e.g. resume flow)
+
+    fetch(`/api/encounters/${savedId}`)
+      .then((r) => { if (!r.ok) throw new Error(); return r.json() })
+      .then((data) => {
+        useCombatStore.getState().loadEncounter({
+          id: data.id,
+          name: data.name,
+          round: data.round,
+          activeIndex: data.activeIndex,
+          isStarted: data.isStarted,
+          combatants: data.combatants.map(({ position: _p, ...c }: { position: number; [k: string]: unknown }) => c),
+        })
+      })
+      .catch(() => {
+        localStorage.removeItem('tablecore-active-id')
+        setRestoreError(true)
+      })
   }, [])
 
   // Auto-switch to detail view on mobile when combat starts
@@ -228,14 +248,20 @@ export default function CombatTracker() {
       {showAddModal && <AddCombatantModal onClose={() => setShowAddModal(false)} />}
       {showSettingsModal && <SettingsModal onClose={() => setShowSettingsModal(false)} />}
 
-      {hydrationToast && (
+      {restoreError && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-red-900 border border-red-700 text-red-100 text-sm px-4 py-3 rounded shadow-lg z-50">
-          <span>Could not restore session. Previous state may be lost.</span>
-          <button
-            onClick={() => setHydrationToast(false)}
-            className="min-h-[44px] px-3 rounded bg-red-700 hover:bg-red-600 font-medium"
+          <span>Could not restore session from database.</span>
+          <Link
+            href="/encounters"
+            className="min-h-[44px] px-3 rounded bg-red-700 hover:bg-red-600 font-medium inline-flex items-center"
           >
-            Start Fresh
+            View History
+          </Link>
+          <button
+            onClick={() => setRestoreError(false)}
+            className="min-h-[44px] px-3 rounded bg-red-800 hover:bg-red-700 font-medium"
+          >
+            Dismiss
           </button>
         </div>
       )}
