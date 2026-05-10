@@ -1,0 +1,112 @@
+# Project Specification: "Chronicle Combat" — Self-Hosted TTRPG Tracker
+
+## 1. PROJECT OVERVIEW
+Build a high-performance, self-hosted web application for tabletop RPG combat management. The goal is to replace paper and complex VTTs with a lightweight, "DM-first" interface focused on speed, readability, and automation of tedious tracking.
+
+Target Environment: 
+- Homelab / Proxmox / Docker.
+- Mobile/Tablet compatibility is a hard requirement (designed for use at the physical table).
+
+What this IS:
+- A combat initiative and HP tracker.
+- A dynamic condition and spell duration manager.
+- A public "spectator" view for players.
+- A foundation for future integrated character sheets.
+
+What this IS NOT:
+- A virtual tabletop (No maps, no tokens, no fog of war).
+- A D&D rules engine (Automation is optional; the DM has the final authority).
+
+---
+
+## 2. CORE PHILOSOPHY & UX
+- The "2-Second" Rule: Common actions (applying damage, moving a turn, adding a condition) must take less than 2 seconds.
+- Undo/Redo: Every combat action must be reversible to handle DM mistakes or "retcons."
+- Low-Light Visibility: High-contrast dark mode by default for gaming environments.
+- Optimistic UI: State changes must reflect instantly on the UI before the database confirms the write.
+- State Persistence: Use LocalStorage Synchronization for the Zustand store so a page refresh or connection blip doesn't wipe the active combat state.
+
+---
+
+## 3. TECH STACK
+- Frontend: Next.js (App Router), TypeScript, Tailwind CSS.
+- State Management: Zustand (Crucial for the Combat Engine and Undo/Redo logic).
+- Database: PostgreSQL via Prisma ORM.
+- Realtime: WebSockets (Socket.io) or Polling for the player-facing "Spectator View."
+- Containerization: Docker & Docker Compose (supporting Nginx Proxy Manager).
+
+---
+
+## 4. ARCHITECTURAL PHASES
+
+### Phase 1: The Zustand Combat Engine (Prototype)
+Create a fully functional in-memory tracker. 
+- Initiative Logic: Dynamic sorting and "Active Turn" pointer.
+- Action History: Implement a robust "Undo/Redo" stack within Zustand.
+- HP Management: Support for temporary HP and damage/healing.
+- Bulk Actions: Support selecting multiple combatants to apply damage, healing, or conditions simultaneously (e.g., the "Fireball" workflow).
+
+### Phase 2: Dynamic Conditions & Timers
+A logic layer that tracks temporary effects.
+- Duration Tracking: Conditions (Stunned, Blessed) linked to round counts.
+- Turn-Triggered Expiration: Automatically decrement rounds at the Start of Turn or End of Turn.
+- Concentration Hooks: If a "Concentrating" combatant takes damage, trigger a UI prompt for a Concentration Save.
+
+### Phase 3: Public Spectator View
+- Public ID: Encounters generate a unique, read-only URL (e.g., /view/[uuid]).
+- Realtime Sync: When the DM moves the initiative pointer, the player view updates instantly.
+- Roll Feed: A public log showing recent dice results and status changes.
+
+### Phase 4: Persistence & Relational Data
+Integrate PostgreSQL with a focus on "Flexible Normalization."
+- Strict 3NF for core relations (Users, Encounters, Monsters).
+- JSONB for Traits: Use JSONB columns for monster "Special Traits" or homebrew stats to avoid schema bloat.
+
+---
+
+## 5. DATABASE SCHEMA REQUIREMENTS
+
+### Core Entities:
+- Encounters: id, name, public_slug, is_active, current_round.
+- EncounterCombatants: 
+    - id, display_name, initiative, current_hp, max_hp, ac.
+    - is_environmental: Boolean (For Lair Actions/Timed Events with 0 HP).
+    - character_id (Nullable FK for future Character Sheet integration).
+- ActiveEffects (Conditions/Spells):
+    - id, target_id, source_id (for Concentration), name.
+    - remaining_rounds, expiry_trigger (Start/End of turn), is_concentration.
+- RollLog:
+    - id, encounter_id, roller_name, formula, result, is_private.
+
+---
+
+## 6. UI & MOBILE REQUIREMENTS
+- Mobile-First: Minimum touch target size of 44x44px for "fat-finger" usability.
+- Layout:
+    - Sidebar: Vertical initiative list with a clear "Active" indicator.
+    - Center: Detailed Active Combatant card with "Quick-Add" condition bar.
+    - Feed: Recent actions/rolls (collapsible on mobile).
+- Condition UI: Visual badges on cards with countdown numbers (e.g., "Prone 2rd").
+- Reinforcements: A seamless UI flow to add new monsters to an already active encounter.
+
+---
+
+## 7. FUTURE-PROOFING: THE CHARACTER SYSTEM
+The system must be built so that an EncounterCombatant can eventually link to a Character record. 
+- The Combat Engine should treat combatants as data objects that can "pull" stats (AC, Save Bonuses) from an external reference ID.
+- Maintain a generic data structure that can accommodate systems beyond D&D 5e (e.g., Pathfinder 2e, various d20 systems).
+
+---
+
+## 8. DEPLOYMENT & SUCCESS CRITERIA
+- Docker Compose: One-click deployment for the App, Postgres, and Reverse Proxy.
+- Success Condition: A DM can manage an encounter of 10+ combatants entirely from a tablet, including multi-target spells and dynamic condition tracking, without the software slowing down the session.
+- Data Portability: Users can export their full database as a JSON file at any time for backups.
+
+---
+
+### IMPORTANT CONSTRAINTS FOR CLAUDE:
+- NO Map/Token features. Do not import Three.js or heavy Canvas libraries.
+- NO PDF parsing.
+- PRIORITIZE the Zustand store logic first; it is the "brain" of the app.
+- USE a "High-Contrast Dark" color palette (Tailwind zinc-900 or similar).
